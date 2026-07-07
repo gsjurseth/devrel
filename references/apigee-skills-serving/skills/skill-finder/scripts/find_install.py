@@ -113,9 +113,13 @@ if _missing_dep is not None:
 # namespace.
 del _VENV_DEPS, _missing_dep, _dep
 
-import yaml
-from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives.asymmetric.ed25519 import (
+# These imports are deferred past the venv-guard block above so a
+# missing dep surfaces the operator-facing message rather than a
+# generic ModuleNotFoundError traceback. flake8 E402 is silenced
+# by design.
+import yaml  # noqa: E402
+from cryptography.exceptions import InvalidSignature  # noqa: E402
+from cryptography.hazmat.primitives.asymmetric.ed25519 import (  # noqa: E402
     Ed25519PublicKey,
 )
 
@@ -161,7 +165,7 @@ try:
     from common.watcher_probe import detect_watcher, WatcherState
     from common.manifest_schema import validate_manifest
     from common.iam_preflight import iam_preflight
-    from common.http_retry import http_get_retry, http_post_retry
+    from common.http_retry import http_get_retry
     from common import config
 except ImportError:
     # Dev / test form (used when invoked from the repo root with
@@ -175,14 +179,15 @@ except ImportError:
     from scripts.common.watcher_probe import detect_watcher, WatcherState
     from scripts.common.manifest_schema import validate_manifest
     from scripts.common.iam_preflight import iam_preflight
-    from scripts.common.http_retry import http_get_retry, http_post_retry
+    from scripts.common.http_retry import http_get_retry
     from scripts.common import config
 
 # google.auth is imported lazily inside _creds() so test code that
 # never touches the network does not have to stub it at import
 # time. requests is imported here because the HTTP retry helpers
 # return requests.Response objects that we need to type-check.
-import requests
+# E402 is silenced by the deferred-import pattern above.
+import requests  # noqa: E402
 
 SKILL_DIR = Path(__file__).resolve().parent.parent
 # Multi-key trust root: every PEM under keys/ is a trusted
@@ -435,7 +440,7 @@ class _WatcherProbeFuture:
             return WatcherState.WATCHER_UNDETECTABLE
         if self._exc is not None:
             return WatcherState.WATCHER_UNDETECTABLE
-        assert self._state is not None
+        assert self._state is not None  # nosec B101 - defensive invariant
         return self._state
 
 
@@ -562,7 +567,10 @@ def _search(
     # "policies" matches keyword "policy". Apigee is the demo
     # punchline; reasonable to over-fit a little.
     raw_tokens = set(query.lower().split())
-    q_tokens = raw_tokens | {t.rstrip("s") for t in raw_tokens if t.endswith("s") and len(t) > 3}
+    q_tokens = raw_tokens | {
+        t.rstrip("s") for t in raw_tokens
+        if t.endswith("s") and len(t) > 3
+    }
 
     # API hub returns keywords as nested
     # {FQ-attribute-name: {stringValues: {values: [...]}}}.
@@ -781,8 +789,8 @@ def _iam_preflight_with_contract(
         # documented case per the library docstring; emit the
         # contract line with that assumption.
         _die(
-            f"IAM pre-flight: FAILED — HTTP 200 non-JSON body "
-            f"from testIamPermissions; install aborted.",
+            "IAM pre-flight: FAILED — HTTP 200 non-JSON body "
+            "from testIamPermissions; install aborted.",
             code=3,
         )
     # Defensive: any unrecognised status string is a library bug.
@@ -804,7 +812,7 @@ def _download_zip(gs_uri: str) -> bytes:
     No ADC scope -- the bucket is public-read. We still
     route through http_get_retry so 5xx surfaces the same
     transient-failure line as the authenticated paths."""
-    assert gs_uri.startswith("gs://")
+    assert gs_uri.startswith("gs://")  # nosec B101 - caller invariant
     bucket, _, obj = gs_uri[5:].partition("/")
     url = f"https://storage.googleapis.com/{bucket}/{obj}"
     try:
@@ -1103,11 +1111,11 @@ def _validate_query(query: str) -> None:
         or any(c in _SHELL_METACHARS for c in query)
     ):
         _die(
-            f"config: FAILED — query contains disallowed "
-            f"characters (non-printable, newline, null, shell "
-            f"metachar, or length > 500). Refusing to proceed to "
-            f"limit shell-injection blast radius if SKILL.md "
-            f"expansion was unsafe.",
+            "config: FAILED — query contains disallowed "
+            "characters (non-printable, newline, null, shell "
+            "metachar, or length > 500). Refusing to proceed to "
+            "limit shell-injection blast radius if SKILL.md "
+            "expansion was unsafe.",
             code=2,
         )
 

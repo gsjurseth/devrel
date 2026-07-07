@@ -42,7 +42,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 from pathlib import Path
 from urllib.parse import quote_plus
@@ -192,16 +191,16 @@ def _validate_args(ns: argparse.Namespace) -> None:
     pt = ns.page_token or ""
     if len(pt) > 2048:
         _die(
-            f"config: FAILED — --page-token too long "
-            f"(>2048 chars). Truncated or corrupted token?",
+            "config: FAILED — --page-token too long "
+            "(>2048 chars). Truncated or corrupted token?",
             code=2,
         )
     for c in pt:
         if ord(c) < 0x20 or ord(c) == 0x7f:
             _die(
-                f"config: FAILED — --page-token contains a "
-                f"non-printable character. Token corrupted in "
-                f"transit?",
+                "config: FAILED — --page-token contains a "
+                "non-printable character. Token corrupted in "
+                "transit?",
                 code=2,
             )
 
