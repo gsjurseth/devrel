@@ -198,7 +198,24 @@ SKILL_DIR = Path(__file__).resolve().parent.parent
 KEYS_DIR = SKILL_DIR / "keys"
 
 
-_ANTIGRAVITY_ROOT = Path.home() / ".gemini" / "config" / "skills"
+# Antigravity supports two install layouts in the wild:
+#   - ~/.gemini/antigravity/skills/ — the layout that
+#     bin/install-skill-finder.sh + bin/provision.sh install into
+#     (canonical / preferred).
+#   - ~/.gemini/config/skills/ — an older layout seen on some
+#     Antigravity builds; kept for backward compatibility.
+# Both are matched during detection, and both are treated as
+# agentic runtimes for the reload-hint trailer. The first entry
+# is the canonical root and is what _detect_skills_root() returns
+# when detection matches by ancestor rather than by exact match.
+_ANTIGRAVITY_ROOTS = (
+    Path.home() / ".gemini" / "antigravity" / "skills",
+    Path.home() / ".gemini" / "config" / "skills",
+)
+# Back-compat alias for the primary root — callers that want the
+# single canonical Antigravity path (e.g. dry-run reporting) can
+# use this without knowing about the tuple.
+_ANTIGRAVITY_ROOT = _ANTIGRAVITY_ROOTS[0]
 _GEMINI_CLI_ROOT = Path.home() / ".gemini" / "skills"
 _OPENCODE_ROOT = Path.home() / ".config" / "opencode" / "skills"
 
@@ -211,18 +228,26 @@ def _detect_skills_root() -> Path:
          use this verbatim. Always the explicit win.
       2. Auto-detect Gemini CLI: invocation under
          ~/.gemini/skills/ (the canonical Gemini CLI install
-         root, distinct from Antigravity's ~/.gemini/config/skills/).
-      3. Auto-detect Antigravity layout: install root is
-         ~/.gemini/config/skills/.
+         root, distinct from any Antigravity path).
+      3. Auto-detect Antigravity layout: invocation under EITHER
+         ~/.gemini/antigravity/skills/ (canonical, matches the
+         installer + provision.sh) OR ~/.gemini/config/skills/
+         (legacy layout seen on older Antigravity builds).
       4. Default: ~/.config/opencode/skills/ (OpenCode layout).
 
     The Gemini CLI check runs BEFORE the Antigravity check because
-    Antigravity's path (~/.gemini/config/skills) and Gemini CLI's
-    path (~/.gemini/skills) are siblings — both under ~/.gemini/
-    but distinct directories. Order matters only for the
+    all three Antigravity/CLI paths live under ~/.gemini/, but are
+    distinct sibling directories. Order matters only for the
     pathologic case where someone configures the same install
     in both runtimes; we'd rather pick the runtime whose
     matching path is more specific to the invocation.
+
+    When the invocation matches an Antigravity root, we return
+    the *actual matched root* rather than always returning the
+    canonical one — this keeps skills installed under the legacy
+    ~/.gemini/config/skills/ path stable in place (they still get
+    the agentic-runtime reload-hint trailer via
+    `is_agentic_runtime`, which also matches both roots).
 
     Detection considers TWO candidates: the realpath-resolved
     SKILL_DIR (real on-disk location, follows symlinks) and the
@@ -246,10 +271,13 @@ def _detect_skills_root() -> Path:
         if _path_is_under(candidate, _GEMINI_CLI_ROOT):
             return _GEMINI_CLI_ROOT
 
-    # Antigravity — single canonical root.
-    for candidate in candidates:
-        if _path_is_under(candidate, _ANTIGRAVITY_ROOT):
-            return _ANTIGRAVITY_ROOT
+    # Antigravity — canonical first, then legacy fallback. Return
+    # whichever root actually matched; both are valid install
+    # locations and both feed into `is_agentic_runtime` below.
+    for antigravity_root in _ANTIGRAVITY_ROOTS:
+        for candidate in candidates:
+            if _path_is_under(candidate, antigravity_root):
+                return antigravity_root
 
     return _OPENCODE_ROOT
 
@@ -1279,7 +1307,7 @@ def main(argv: list[str] | None = None) -> None:
     # OpenCode /reload-skills slash command. Both rescan
     # their skills directory on the next conversation turn.
     is_agentic_runtime = SKILLS_ROOT in (
-        _ANTIGRAVITY_ROOT,
+        *_ANTIGRAVITY_ROOTS,
         _GEMINI_CLI_ROOT,
     )
     if watcher == WatcherState.WATCHER_ENABLED:

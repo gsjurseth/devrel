@@ -200,19 +200,27 @@ output for the same logical manifest, or signatures will not verify.
 
 API hub's typed attributes let consumers filter the catalog. This
 reference declares four user-defined attributes via
-`scripts/update_taxonomy.py`:
+`scripts/update_taxonomy.py`, plus one system-defined enum value
+patched in from `bin/provision.sh`:
 
-| Attribute               | Type   | Purpose                                                     |
-| ----------------------- | ------ | ----------------------------------------------------------- |
-| `skill-compatible`      | bool   | True for entries consumable as agent skills.                |
-| `skill-runtime-iam`     | string | Comma-separated list of IAM permissions the skill declares. |
-| `skill-signing-key-id`  | string | SHA-256 fingerprint of the publisher's signing key.         |
-| `skill-bundle-gs-uri`   | string | GCS URI of the signed `.skill` archive.                     |
+| Attribute          | Kind         | Type    | Purpose                                                                  |
+| ------------------ | ------------ | ------- | ------------------------------------------------------------------------ |
+| `agentic_skill`    | user-defined | bool    | True for entries consumable by the agent runtime.                        |
+| `keywords`         | user-defined | strings | Discovery keywords mirrored from the manifest (cardinality: up to 20).   |
+| `gs_uri`           | user-defined | string  | GCS URI of the signed `.skill` archive.                                  |
+| `signing_key_id`   | user-defined | string  | `sha256:<hex>` fingerprint of the publisher's signing public key.        |
+| `skill-spec`       | system enum  | —       | Value patched into the built-in `system-spec-type` enum (see note below).|
 
-These attributes are immutable once created (API hub does not support
-attribute schema migration). The `update_taxonomy.py` script is
-idempotent: it creates any missing attributes and leaves existing
-ones untouched.
+The four user-defined attributes are immutable once created (API hub
+does not support attribute schema migration). The `update_taxonomy.py`
+script is idempotent: it creates any missing attributes and leaves
+existing ones untouched.
+
+The `skill-spec` value on the built-in `system-spec-type` enum is
+added by a direct API hub `PATCH` from `bin/provision.sh` because
+`update_taxonomy.py` only manages user-defined attributes. Migrating
+that patch into `update_taxonomy.py` is a documented follow-up
+(see `docs/provisioning.md#step-4-api-hub-attribute-taxonomy`).
 
 ## Failure modes
 

@@ -48,4 +48,4 @@ and the trust root is materialised on the customer's machine
 during provisioning. Nothing signed by anybody's key ever
 enters this repo.
 
-See `docs/trust-root.md` for the full trust model discussion.
+See `docs/architecture.md#trust-model` for the full trust model discussion.

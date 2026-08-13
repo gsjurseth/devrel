@@ -433,6 +433,9 @@ install_one_skill() {
   fi
 
   # Atomic install: build in a staging dir, mv into place.
+  # Ensure INSTALL_ROOT exists before mktemp -p (needed on fresh systems
+  # where the mkdir at the "install" phase below has not yet run).
+  mkdir -p "$INSTALL_ROOT"
   local staging
   staging=$(mktemp -d -p "$INSTALL_ROOT" ".staging-XXXXXX")
   if ! cp -r "$skill_src/." "$staging/"; then
@@ -543,4 +546,4 @@ log "  2. Drop your org's existing public key PEM into"
 log "     $INSTALL_ROOT/skill-finder/keys/<fingerprint>.pem"
 log "     manually. Any file matching keys/*.pem is loaded."
 log ""
-log "See docs/trust-root.md for the full trust-model discussion."
+log "See docs/architecture.md#trust-model for the full trust-model discussion."

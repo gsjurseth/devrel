@@ -175,7 +175,23 @@ while [ "$#" -gt 0 ]; do
     --bucket)                     BUCKET="${2:-}"; shift 2 ;;
     --apigee-org)                 APIGEE_ORG="${2:-}"; shift 2 ;;
     --key-path)                   KEY_PATH="${2:-}"; shift 2 ;;
-    --runtime)                    RUNTIME="${2:-}"; shift 2 ;;
+    --runtime)
+      RUNTIME="${2:-}"
+      # Fail fast on unknown runtime values. Without this, an
+      # unrecognized value falls through the case statement at
+      # the "Compute SKILLS_ROOT" step, leaves SKILLS_ROOT unset,
+      # and under `set -u` blows up on the KEYS_DIR assignment
+      # with an opaque "unbound variable" error.
+      case "$RUNTIME" in
+        opencode|gemini|antigravity) ;;
+        *)
+          echo "[provision] FATAL: --runtime must be one of" \
+               "opencode | gemini | antigravity (got: '$RUNTIME')" >&2
+          exit 1
+          ;;
+      esac
+      shift 2
+      ;;
     --skip-apis)                  SKIP_APIS=1; shift ;;
     --skip-bucket)                SKIP_BUCKET=1; shift ;;
     --skip-taxonomy)              SKIP_TAXONOMY=1; shift ;;
@@ -739,6 +755,14 @@ PYEOF
       opencode)     SKILLS_ROOT="$HOME/.config/opencode/skills" ;;
       gemini)       SKILLS_ROOT="$HOME/.gemini/skills" ;;
       antigravity)  SKILLS_ROOT="$HOME/.gemini/antigravity/skills" ;;
+      # Defense in depth: the arg-parse block above rejects
+      # unknown --runtime values, and auto-detect can only set
+      # RUNTIME to a known value or empty. Anything else here
+      # means an invariant was broken upstream.
+      *)
+        err "internal error: unknown RUNTIME '$RUNTIME' reached SKILLS_ROOT"
+        exit 1
+        ;;
     esac
     KEYS_DIR="${SKILLS_ROOT}/skill-finder/keys"
     if [ ! -d "$KEYS_DIR" ]; then

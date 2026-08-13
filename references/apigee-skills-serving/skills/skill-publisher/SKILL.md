@@ -263,9 +263,11 @@ file an issue if needed).
   refuse to install the skill.
 - The `signing_key_id` field is the sha256 of the **public** key,
   not the private key. It is safe to publish. `skill-finder`
-  cross-checks it against its embedded trust root
-  (`keys/trusted_pubkey.pem`); a manifest signed by a key not in
-  the trust root is rejected client-side.
+  cross-checks it against installed trust roots
+  (`keys/*.pem`); a manifest signed by a key not in
+  the trust root is rejected client-side. Multiple keys can be
+  installed side-by-side to support multi-publisher orgs and
+  zero-downtime key rotation.
 - GCS uploads use ADC. The operator must have
   `storage.objects.create` on the target bucket. The skill does
   not run a permission pre-flight; it relies on the upload itself

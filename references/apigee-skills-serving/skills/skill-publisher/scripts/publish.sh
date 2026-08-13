@@ -94,7 +94,10 @@ err()  { echo "[skill-publisher] $*" >&2; }
 # ---------------------------------------------------------------
 for var in SRC BUCKET PRIV_KEY PROJECT LOCATION; do
   if [ -z "${!var}" ]; then
-    err "FATAL: --${var,,} is required (got empty)"
+    # Use tr rather than ${var,,} to stay portable to macOS
+    # /bin/bash (3.2), which lacks the ,, expansion.
+    flag_name="$(echo "$var" | tr '[:upper:]' '[:lower:]' | tr '_' '-')"
+    err "FATAL: --${flag_name} is required (got empty)"
     exit 1
   fi
 done
